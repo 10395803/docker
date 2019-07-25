@@ -1,0 +1,103 @@
+FROM steubb92:base
+
+MAINTAINER Stefano Ubbiali subbiali@phys.ethz.ch
+
+# useful environment variable
+ENV PYTHONWARNINGS ignore:'numpy.dtype size changed':RuntimeWarning,ignore:'numpy.ufunc size changed':RuntimeWarning
+
+# import requirements.txt into the container filesystem
+COPY requirements.txt /home/steubb92/requirements.txt
+
+# switch to root user
+USER root
+
+# packages required to install python with SSL/TLS support
+RUN apt-get install -y build-essential \
+					   zlib1g-dev \
+					   libbz2-dev \
+					   libsqlite3-dev \
+					   libffi-dev \
+					--no-install-recommends
+RUN wget -q "https://www.openssl.org/source/openssl-1.0.2q.tar.gz" && \
+	tar xvfz openssl-1.0.2q.tar.gz && \
+	cd openssl-1.0.2q && \
+	./config --shared && \
+	make && make install && \
+	cd .. && \
+	rm -rf openssl-1.0.2q
+ENV LD_LIBRARY_PATH /usr/local/ssl/lib
+
+# install python3.5
+RUN wget -q 'https://www.python.org/ftp/python/3.5.6/Python-3.5.6.tar.xz'
+RUN tar xf Python-3.5.6.tar.xz
+RUN cd Python-3.5.6 && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
+	make && make install && \
+	cd .. && \
+	rm -rf Python-3.5.6
+RUN /usr/local/bin/pip3.5 install --upgrade pip
+RUN /usr/local/bin/pip3.5 install virtualenv
+
+# create a virtual environment around python3.5
+USER steubb92
+RUN virtualenv --python=python3.5 py35
+RUN . py35/bin/activate && \
+	pip install -r requirements.txt && \
+	cat py35/lib/python3.5/site-packages/matplotlib/mpl-data/matplotlibrc | \
+	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
+	cp /tmp/.matplotlibrc py35/lib/python3.5/site-packages/matplotlib/mpl-data/matplotlibrc && \
+	rm /tmp/.matplotlibrc && \
+	deactivate
+
+# install python3.6
+USER root
+RUN wget -q 'https://www.python.org/ftp/python/3.6.7/Python-3.6.7.tar.xz'
+RUN tar xf Python-3.6.7.tar.xz
+RUN cd Python-3.6.7 && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
+	make && make install && \
+	cd .. && \
+	rm -rf Python-3.6.7
+RUN /usr/local/bin/pip3.6 install --upgrade pip
+
+# create a virtual environment around python3.6
+USER steubb92
+RUN virtualenv --python=python3.6 py36
+RUN . py36/bin/activate && \
+	pip install -r requirements.txt && \
+	cat py36/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc | \
+	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
+	cp /tmp/.matplotlibrc py36/lib/python3.6/site-packages/matplotlib/mpl-data/matplotlibrc && \
+	rm /tmp/.matplotlibrc && \
+	deactivate
+
+# install python3.7
+USER root
+RUN wget -q 'https://www.python.org/ftp/python/3.7.2/Python-3.7.2.tar.xz'
+RUN tar xf Python-3.7.2.tar.xz
+RUN cd Python-3.7.2 && \
+	./configure --with-ensurepip=upgrade --enable-optimizations && \
+	make && make install && \
+	cd .. && \
+	rm -rf Python-3.7.2
+RUN /usr/local/bin/pip3.7 install --upgrade pip
+
+# create a virtual environment around python3.7
+USER steubb92
+RUN virtualenv --python=python3.7 py37
+RUN . py37/bin/activate && \
+	pip install -r requirements.txt && \
+	cat py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc | \
+	sed -e 's/^backend.*: TkAgg/backend : Qt5Agg/g' > /tmp/.matplotlibrc && \
+	cp /tmp/.matplotlibrc py37/lib/python3.7/site-packages/matplotlib/mpl-data/matplotlibrc && \
+	rm /tmp/.matplotlibrc && \
+	deactivate
+
+# set firefox as default browser for jupyter
+RUN . py35/bin/activate && \
+	jupyter notebook --generate-config && \
+	cat $HOME/.jupyter/jupyter_notebook_config.py | \
+	sed -e "s@\#c.NotebookApp.browser = ''@c.NotebookApp.browser = '/usr/bin/firefox'@g" > /tmp/jupyter_notebook_config.py && \
+	cp /tmp/jupyter_notebook_config.py $HOME/.jupyter/jupyter_notebook_config.py && \
+	rm /tmp/jupyter_notebook_config.py && \
+	deactivate

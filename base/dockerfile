@@ -1,0 +1,83 @@
+FROM debian:stretch
+
+MAINTAINER Stefano Ubbiali subbiali@phys.ethz.ch
+
+# make debian never interact with you
+ENV DEBIAN_FRONTEND noninteractive
+
+# install sudo
+RUN apt-get update
+RUN apt-get install -y sudo
+
+# create the non-root user steubb92 and make it sudoer
+ARG uid=1000
+RUN useradd -r -u $uid steubb92 && echo "steubb92:steubb92" | chpasswd && adduser steubb92 sudo
+
+# make home directory for steubb92
+RUN mkdir /home/steubb92
+RUN	chmod a+w /home/steubb92
+RUN	chown -R steubb92 /home/steubb92
+
+# locale configuration
+RUN apt-get install -y locales
+RUN cp /usr/share/zoneinfo/Europe/Zurich /etc/localtime && \
+	dpkg-reconfigure locales
+
+# set /home/steubb92 as the working directory
+WORKDIR /home/steubb92
+ENV 	HOME /home/steubb92
+
+# set .bashrc
+COPY bashrc $HOME/.bashrc
+
+# install vim
+RUN apt-get install -y vim
+COPY vimrc $HOME/.vimrc
+
+# install a miscellaneous of useful software
+RUN apt-get update
+RUN apt-get install -y ca-certificates		\
+					   cmake				\
+					   curl					\
+					   firefox-esr			\
+					   libblas3				\
+					   libblas-dev			\
+					   libhdf5-dev			\
+					   liblapack3			\
+					   liblapack-dev		\
+					   libfreetype6-dev     \
+					   libnetcdf-dev		\
+					   libpng-dev			\
+					   g++					\
+					   gfortran				\
+					   git					\
+					   gnupg				\
+					   graphviz				\
+					   make					\
+					   pkg-config           \
+					   qt-sdk				\
+					   x11-apps				\
+					   wget					\
+					--no-install-recommends
+
+# install FFmpeg
+RUN	apt-get install -y ffmpeg
+
+# install chrome
+RUN echo 'deb [arch=amd64] http://dl.google.com/linux/chrome/deb stable main' >> /etc/apt/sources.list
+RUN	wget https://dl.google.com/linux/linux_signing_key.pub
+RUN apt-get install -y gnupg
+RUN	apt-key add linux_signing_key.pub
+RUN	apt-get update
+RUN	apt-get install -y google-chrome-stable 
+
+# install git lfs
+RUN curl -s https://packagecloud.io/install/repositories/github/git-lfs/script.deb.sh | bash
+RUN	apt-get install -y git-lfs
+RUN	git lfs install
+
+# set useful environmental variables
+ENV TERM xterm-256color
+ENV QT_X11_NO_MITSHM 1
+
+USER steubb92
